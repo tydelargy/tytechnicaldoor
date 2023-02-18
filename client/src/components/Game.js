@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { useLocation } from "react-router-dom";
+import { Button, ButtonContainer, Container, Image, ImageContainer, ImageWithText, Title } from "./Styles";
 import Timer from "./Timer";
 // import Movie from "./Movie";
 // import axios from 'axios';
@@ -61,7 +62,7 @@ export default function Game(){
             setTitle(data.title)
             setPoster(data.poster)
         })
-        .then(fetchScore(urlParams.get('gid')))
+        // .then(fetchScore(urlParams.get('gid')))
         .catch((err) => console.log(err))
     }
 
@@ -90,6 +91,7 @@ export default function Game(){
     }
 
     const scoreAnswer = async (ans) => {
+        console.log(ans)
         const res = await fetch("http://localhost:5000/answer", {
             method: 'POST',
             headers: {
@@ -98,41 +100,37 @@ export default function Game(){
             },
             body: JSON.stringify({'gid': gid, 'pid': pid, 'mid': mid, 'ans': ans})
             // body: '{ans: ans, gid: gid, pid: pid, mid: mid}'
-        });
-        if(!res.ok){
-            const messg = 'Erroorrrr: ${res.status}';
-            throw new Error(messg);
-        }
+        }).catch((err) => console.log(err));
+        // if(!res.ok){
+        //     const msg = '${res.status}';
+        //     throw new Error(msg);
+        // }
         const data = await res.json();
         console.log(data)
+        // fetchScore();
+        setScore(data.score);
+        fetchMovie();
         // setScore(data['score'])
-        window.location = '/game?gid=' + data['gid'];
-        }
+        // window.location = '/game?gid=' + data['gid'];
+    }
 
 
     return (
-        //Name Get
-        //Poster Get
-        //Headshot Get?
-        //Format in Written Question??
-        //Send to server, backedn query cast and name to determine true false
-        //return point or 0, add to total
         <>
         <Timer/>
-        <p>{name}</p>
-        <img loading ="lazy" width={300} height = {450} src = {img_base_ref + profile}/>
-        <p>{title}</p>
-        <img loading ="lazy" width={300} height = {450} src = {img_base_ref + poster}/>
-        <p>{gid}</p>
-        {/* <p>{pid}</p>
-        <p>{mid}</p> */}
-        
-        {/* <Movie /> */}
-        <p>Score: {score}</p>
-        <form>
-            <button value = 'yes' onClick={(e) => {handleSubmit(e);}}> Yes </button>
-            <button value = 'no' onClick={(e) => {handleSubmit(e);}}> No </button>
-        </form></>
+        {/* <p>{name}</p> */}
+        <ImageContainer>
+            <ImageWithText loading ="lazy" width={300} height = {450} src = {img_base_ref + profile} name = {name}/>
+            {/* <p>{title}</p> */}
+            <ImageWithText loading ="lazy" width={300} height = {450} src = {img_base_ref + poster} name = {title}/>
+            {/* <p>{gid}</p> */}
+        </ImageContainer>
+        <Title>Score: {score}</Title>
+        <ButtonContainer>
+            <Button color = 'yes' value = 'yes' onClick={(e) => {handleSubmit(e);}}> Yes </Button>
+            <Button value = 'no' onClick={(e) => {handleSubmit(e);}}> No </Button>
+        </ButtonContainer>
+        </>
         // onSubmit={e => { handleSubmit(e); } } WAS INSIDE first form wrapper
 
     );

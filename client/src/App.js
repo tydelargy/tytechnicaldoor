@@ -7,41 +7,17 @@ import Start from "./components/Start";
 import Game from "./components/Game";
 import Final from "./components/Final";
 import Timer from "./components/Timer";
+import NewTimer from './components/NewTimer';
+import { Container, Title } from "./components/Styles";
 
 
 function App(){
-  //State demos
-  // const[count, setCount] = useState(0);
-  // // const possibles String[] = ["Hello World", "Goodbye World"];
-  // const[str, setString] = useState('Hello World');
-  // const [bool, setBool] = useState(true);
-
-  // const[data, setData] = useState([]) //did have {} for fetch
-
-  // useEffect(() => {
-  //   axios.get('http://localhost:5000/members')
-  //   .then(res => {
-  //     setData(res.data)
-  //     console.log(res.data)
-  //   }).catch(err => {
-  //     console.log(err)
-  //   })
-  //   }, [])
-
-
-  //State Vars
-  //Start Vars
-  // const[name, setName] = useState();
-  // //*NEED TIMER?
-  // //Need GID?
-
-  // //Game Vars
-  // const[ans, setAns] = useState();
-  // const[score, setScore] = useState(0);
 
   return (
     <div>
-      <h1>Guess the Cast!</h1>
+      <Container>
+      <Title>Guess the Cast!</Title>
+      <NewTimer/>
       {/* <Start/>
       <Timer/>
       <Game/> */}
@@ -63,8 +39,9 @@ function App(){
       <Routes>
         <Route path = "/" element = {<Start/>}/>
         <Route path = "/game" element = {<Game/>}/>
-        {/* <Route path = "/final/:gid" element = {<Final/>}/> */}
+        <Route path = "/final" element = {<Final/>}/>
       </Routes>
+      </Container>
     </div>
   )
 }
@@ -102,6 +79,9 @@ function App(){
 
 
 //THINGS LEFT
-//FRONT, Scoreboard, timer funcitonality, final screen, play again button pass GID fetch name, and run start, elim shitty image search
+//elim shitty image search, elim image disjointed error, elim button fail error, 
+//add immutable gid entry, server timer, concurrent timer, new game not just rety
+//animation on final screen if new highscore for name, possibly add same to score numebr in render
+//Add my api fetch times to comments
 
 export default App

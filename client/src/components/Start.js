@@ -1,5 +1,6 @@
 import React, { useState, createContext } from "react";
-// import Scoreboard from "./components/Scoreboard";
+import Scoreboard from "./Scoreboard";
+import { Button, ButtonContainer, Container, Form, FormInput, FormLabel } from "./Styles";
 // import {redirect, useNavigate} from "react-router-dom";
 
 export default function Start(){
@@ -45,23 +46,39 @@ export default function Start(){
 
     return (
         // <GidContext.Provider value = {gid}>
+        // <>
+        // <Scoreboard/>
+        // <form onSubmit={e => { handleSubmit(e); } }>
+        //     <label>Name</label>
+        //     <input
+        //         name='userName'
+        //         type='text'
+        //         onChange={e => setName(e.target.value)} />
+        //     <br />
+            
+        //     <input
+        //         type='submit'
+        //         value='Start Game'/>
+        // </form>
+        // </>
+        // <Game gid = {gid}/>
+        // </GidContext.Provider>
         <>
-        {/* <Scoreboard/> */}
-        <form onSubmit={e => { handleSubmit(e); } }>
-            <label>Name</label>
-            <input
+        <Scoreboard/>
+        <Form onSubmit={e => { handleSubmit(e); } }>
+            <FormLabel>Name</FormLabel>
+            <FormInput
                 name='userName'
                 type='text'
                 onChange={e => setName(e.target.value)} />
             <br />
             
-            <input
-                type='submit'
-                value='Start Game'/>
-        </form>
+            {/* <Button color = 'yes' type='submit'>Start Game <Button/> */}
+            <ButtonContainer>
+                <Button color = 'yes' type = 'submit'>Start Game</Button>
+            </ButtonContainer>
+        </Form>
         </>
-        // <Game gid = {gid}/>
-        // </GidContext.Provider>
 
     );
 }

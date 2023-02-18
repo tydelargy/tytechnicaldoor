@@ -4,11 +4,12 @@ from urllib import request
 import logging
 import ssl
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, abort
 from flask import request as fl_req
 from flask_cors import CORS, cross_origin
 from flask_pymongo import PyMongo, ObjectId
 from pymongo import MongoClient
+import datetime
 
 app = Flask(__name__)
 
@@ -34,7 +35,7 @@ CORS(app)
 api_key_3 = "e7563e8a3f845a7df7b8e492c489c0c2"
 #Base query URL limits by English lang, sorts by popularity, has over 50 ratings, and a 7 or better for average rating.
 #In testing this can produce reliably recognizable movies
-base_query_url = "https://api.themoviedb.org/3/discover/movie?api_key=" + api_key_3 + "&language=en-US&sort_by=popularity.desc&include_video=false&vote_count.gte=50&vote_average.gte=7"
+base_query_url = "https://api.themoviedb.org/3/discover/movie?api_key=" + api_key_3 + "&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&vote_count.gte=50&vote_average.gte=7"
 base_person_url = "https://api.themoviedb.org/3/person/popular?api_key=" +api_key_3 + "&language=en-US"
 base_credits_url = "https://api.themoviedb.org/3/person/"
 
@@ -56,16 +57,15 @@ def newGame():
         # req = fl_req.get_json()
         result = scores.insert_one({
             'name': fl_req.json['name'],
-            'score': 0
+            'score': 0,
+            # 'start_time': datetime.datetime.now()
         })
         return jsonify({'gid' : str(result.inserted_id), 'score': 0})
     elif fl_req.method == 'GET':
-        # filter = scores.aggregate[
-        #     {$sort: {score}},
-        #     {$limit: 10},
-        # ].pretty()
-        top_scores = scores.find().sort("score")
-        return(jsonify(top_scores)) 
+        top_scores = list(scores.find().sort("score", -1).limit(10))
+        ret = [{'name': score['name'], 'score': score['score']} for score in top_scores]
+        #'gid': str(score['_id'])
+        return(jsonify(ret))
 
 
 
@@ -151,20 +151,23 @@ def randomMovie():
 
 
 
-@app.route("/answer", methods = ['POST', 'GET'])
+@app.route("/answer", methods = ['POST'])
 # @cross_origin(origin='localhost',headers=['Content- Type','Authorization'])
 # @cross_origin()
 def answer():
-    # if fl_req.method == 'POST':
-        # result = fl_req.get_json()
-    point = False
+    #Find current game
     gid = fl_req.json['gid']
+    #Check if we can submit an answer to this game ID.
+    # last_update = scores.find_one({'_id': ObjectId(gid)})['start_time']
+    # if(not datetime.datetime.now() > last_update):
+    # #To keep track if point has been awarded
+    point = False
     ans = fl_req.json['ans']
+    # if ans == 'yes':
+    #     ans = True
+    # else:
+    #     ans = False
     print(ans)
-    if ans == 'yes':
-        ans = True
-    else:
-        ans = False
     pid = fl_req.json['pid']
     mid = fl_req.json['mid']
     # print(pid)
@@ -178,18 +181,23 @@ def answer():
     for credit in credits:
         movie_id = credit['id']
         #If we find the film in credits and they answer YES
-        if mid == movie_id and ans:
+        if mid == movie_id and ans == "yes":
             print('movieFound')
             scores.update_one(filter, new_score)
             point = True
-    if not ans and not point:
+    # if not ans and not point:
+    if (ans == 'no' and not point):
         print('nomatchhh')
         scores.update_one(filter, new_score)
         # point = 'yes'
-    print('SCORE!')
+        print('SCORE!')
+    #Find game now that point has been awarded.
     game = scores.find_one({'_id': ObjectId(gid)})
     print(game['score'] )
-    return jsonify({'gid': gid, 'score': game['score']})
+    return jsonify({'gid': gid, 'name': game['name'], 'score': game['score']})
+    # else:
+    #     abort(500, description = "Answer for game {gid} submitted after allotted time.")
+    #EROR WITH FALSE!!! AND ERROR WITH DATETIMETHINGS
 
 
 
@@ -199,24 +207,8 @@ def giveScore():
     args = fl_req.args
     gid = args.get('gid')
     game = scores.find_one({'_id': ObjectId(gid)})
-    return jsonify({'score': game['score']})
+    return jsonify({'gid': gid, 'name': game['name'], 'score': game['score']})
 
-# @app.route("/answer", methods = ['POST', 'GET'])
-# def judgeAnswer():
-#     ssl._create_default_https_context = ssl._create_unverified_context
-#     conn = request.urlopen(base_credits_url + str(pid) + "/movie_credits?api_key=" + api_key_3 + "&language=en-US")
-#     json_credits = dict(json.loads(conn.read()))
-#     credits = list(json_credits['cast'])
-#     for credit in credits:
-#         movie_id = credit['id']
-#         if mid == movie_id:
-#             return('yes')
-#         else:
-#             return('no')
-        
-    # crew = json_credits['crew']
-    # id = json_credits['id']
-    # return(str(movie_id))
 
 
 

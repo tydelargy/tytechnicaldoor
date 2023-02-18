@@ -1,6 +1,8 @@
 //Timer.js
 
 import {React, useState, useEffect, useRef} from 'react';
+import {useHistory, useLocation} from 'react-router-dom';
+import { TimerContainer } from './Styles';
 
 const STATUS = {
     STARTED: 'Started',
@@ -10,8 +12,9 @@ const STATUS = {
 const INITIAL_TIME = 60
 
 export default function Timer() {
+    const [isVisible, setIsVisible] = useState(false);
     const [secondsRemaining, setSecondsRemaining] = useState(INITIAL_TIME)
-    const [status, setStatus] = useState(STATUS.STARTED)
+    const [status, setStatus] = useState(STATUS.STOPPED)
 
     const handleStart = () => {
         setStatus(STATUS.STARTED)
@@ -36,11 +39,11 @@ export default function Timer() {
     )
 
     return(
-        <div className='timer'>
-            <div> STATUS: {status}</div>
-            <div>Time Left: {secondsRemaining}</div>
-            <button onClick={handleStart} type="button">Start</button>
-            <button onClick={handleStop} type="button">Stop</button>
+        <div style ={{ display: isVisible ? 'block': 'none'}} className='timer'>
+            {/* <div> STATUS: {status}</div> */}
+            <TimerContainer>Time Left: {secondsRemaining}</TimerContainer>
+            {/* <button onClick={handleStart} type="button">Start</button>
+            <button onClick={handleStop} type="button">Stop</button> */}
         </div>
     )
 }
