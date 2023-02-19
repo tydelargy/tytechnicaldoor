@@ -1,13 +1,13 @@
-# Ty Delargy - Doorway.io Technical Challenge
-# Setup:
-  ## Download files
+# Ty Delargy - Doorway.io Technical Challenge\n
+# Setup:\n
+  ## Download files\n
   
-## In first terminal
-cd client
-npm install package.json
-npm start
+## In first terminal\n
+cd client\n
+npm install package.json\n
+npm start\n
 
 ## In seperate terminal:
-cd flask-server
-.\venv\Scripts\activate
-python server.py
+cd flask-server\n
+.\venv\Scripts\activate\n
+python server.py\n
