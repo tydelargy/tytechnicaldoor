@@ -1,6 +1,6 @@
 # Ty Delargy - Doorway.io Technical Challenge<br><br>
 # Setup:<br>
-Replace api_key_3 with your own, or feel free to use mine. :)<br>
+Replace api_key_3 in server.py with your own, or feel free to use mine. :)<br>
   
 ### In first terminal<br>
 cd client<br>
