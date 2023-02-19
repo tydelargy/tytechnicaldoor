@@ -158,13 +158,6 @@ def randomMovie():
         title = result.get('title')
         poster = result.get('poster_path')
         release = result.get('release_date')
-    # if(title == None or poster == None or release == None):
-    #     print('UNDEF ELEMENT')
-    #     randomMovie()
-    #     #Must return something to not raise error.
-    #     abort(899, 'Empty fetch trying again.')
-    # else:
-    #     print('NORMAL')
     return jsonify({"pid": person['id'], "name": person['name'], "profile": person['profile_path'], "mid": result['id'], "title": title, "poster": poster, "release": release})
 
 
