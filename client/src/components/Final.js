@@ -1,20 +1,23 @@
-import React, { useState, useEffect} from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef} from "react";
+import { useLocation } from "react-router-dom";
 import Scoreboard from "./Scoreboard";
-import Start from "./Start";
 import { Button, ButtonContainer, FinalScore, Form } from "./Styles";
-// import {redirect, useNavigate} from "react-router-dom";
 
 export default function Final(){
 
     const[name, setName] = useState("User");
-    const[score, setScore] = useState(0)
+    const[score, setScore] = useState(0);
+    const[mode, setMode] = useState('Easy');
     const location = useLocation();
-    const navigate = useNavigate();
 
+    const scoreFetchedRef = useRef(false);
+
+    //Make sure we only fetch score once
     useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        fetchScore(params.get('gid'))
+        if(scoreFetchedRef.current) return;
+        scoreFetchedRef.current = true;
+        const urlParams = new URLSearchParams(location.search);
+        fetchScore(urlParams.get('gid'))
     }, [location]);
 
     const handleRetry = (e) => {
@@ -27,53 +30,43 @@ export default function Final(){
         e.preventDefault();
     }
 
-    const fetchScore = (gid) => {
-        fetch('http://localhost:5000/score?' + new URLSearchParams({
-            gid: gid,
-        }),
-        {
-            method: 'GET',
-            // body: JSON.stringify({'gid': gid})
-        })
-        .then((res) => res.json())
-        .then((data) => {
-            console.log(data)
-            setScore(data.score)
-            setName(data.name)
-        })
-        .catch((err) => console.log(err))
-    }
-
+    //Retry passes same username as current game
     const retryGame = async () => {
-        const res = await fetch("http://localhost:5000/start", {
+        const res = await fetch("/api/start", {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({name: name})
-            });
-            if(!res.ok){
-                const messg = 'Erroorrrr: ${res.status}';
-                throw new Error(messg);
-            }
-            const data = await res.json();
-            console.log(data)
-            // setGID(data['gid'])
-
-            window.location = '/game?gid=' + data['gid'];
-            // navigate.({
-            //     to: '/game',
-            //     state: {gid}
-            // })
-            // return redirect("/game/:gid")
-            // <redirect
-
-        
+                body: JSON.stringify({name: name, mode: mode})
+        });
+        if(!res.ok){
+            const messg = '500 Error: failed to retry game.';
+            throw new Error(messg);
+        }
+        const data = await res.json();
+        window.location = '/game?gid=' + data['gid'] + '&mode=' + mode;
     }
 
+    //New game just bounces back to homepage
     const newGame = () => {
-        navigate('/')
+        window.location.replace('/');
+    }
+
+    const fetchScore = (gid) => {
+        fetch('/api/score?' + new URLSearchParams({
+            gid: gid,
+        }),
+        {
+            method: 'GET',
+        })
+        .then((res) => res.json())
+        .then((data) => {
+            setScore(data.score)
+            setName(data.name)
+            setMode(data.mode)
+        })
+        .catch((err) => console.log(err))
     }
 
     return (
@@ -82,9 +75,7 @@ export default function Final(){
         <FinalScore>{name} Final Score: {score}</FinalScore>
         <ButtonContainer>
             <Form onSubmit={e => { handleRetry(e); } }>
-                
-                    <Button color = 'yes' type = 'submit'>Retry</Button>
-                
+                <Button color = 'yes' type = 'submit'>Retry</Button>
             </Form>
             <Form onSubmit={(e) => {handleNew(e);}}>
                 <Button color = 'yes' type = 'submit'>New Game</Button>

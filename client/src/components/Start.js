@@ -1,68 +1,33 @@
-import React, { useState, createContext } from "react";
+import React, { useState } from "react";
 import Scoreboard from "./Scoreboard";
-import { Button, ButtonContainer, Container, Form, FormInput, FormLabel } from "./Styles";
-// import {redirect, useNavigate} from "react-router-dom";
+import { Button, ButtonContainer, Form, FormInput, FormLabel } from "./Styles";
 
 export default function Start(){
 
     const[name, setName] = useState("User");
-    // const[gid, setGID] = useState(0)
-    // let navigate = useNavigate();
+    const[mode, setMode] = useState("Easy");
 
-    // const GidContext = createContext();
-
+    //Submit new game on button click.
     const handleSubmit = (e) => {
-        newGame(name)
+        newGame()
         e.preventDefault();
     }
 
+    //Instantiate new game with username and return game id.
     const newGame = async () => {
-        const res = await fetch("http://localhost:5000/start", {
+        const res = await fetch("/api/start", {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({name: name})
-            });
-            if(!res.ok){
-                const messg = 'Erroorrrr: ${res.status}';
-                throw new Error(messg);
-            }
+                body: JSON.stringify({name: name, mode: mode})
+            }).catch((err) => console.log(err));
             const data = await res.json();
-            console.log(data)
-            // setGID(data['gid'])
-
-            window.location = '/game?gid=' + data['gid'];
-            // navigate.({
-            //     to: '/game',
-            //     state: {gid}
-            // })
-            // return redirect("/game/:gid")
-            // <redirect
-
-        
+            window.location.replace('/game?gid=' + data['gid'] + '&mode=' + mode);
     }
 
     return (
-        // <GidContext.Provider value = {gid}>
-        // <>
-        // <Scoreboard/>
-        // <form onSubmit={e => { handleSubmit(e); } }>
-        //     <label>Name</label>
-        //     <input
-        //         name='userName'
-        //         type='text'
-        //         onChange={e => setName(e.target.value)} />
-        //     <br />
-            
-        //     <input
-        //         type='submit'
-        //         value='Start Game'/>
-        // </form>
-        // </>
-        // <Game gid = {gid}/>
-        // </GidContext.Provider>
         <>
         <Scoreboard/>
         <Form onSubmit={e => { handleSubmit(e); } }>
@@ -72,10 +37,9 @@ export default function Start(){
                 type='text'
                 onChange={e => setName(e.target.value)} />
             <br />
-            
-            {/* <Button color = 'yes' type='submit'>Start Game <Button/> */}
             <ButtonContainer>
-                <Button color = 'yes' type = 'submit'>Start Game</Button>
+                <Button color = 'yes' type = 'submit' onClick={() => setMode("Easy")}>Easy</Button>
+                <Button type = 'submit' onClick={() => setMode("Hard")}>Hard</Button>
             </ButtonContainer>
         </Form>
         </>

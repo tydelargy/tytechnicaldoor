@@ -1,213 +1,223 @@
 import random
 from urllib import request
 # import urllib.request as request
-import logging
 import ssl
 import json
 from flask import Flask, jsonify, abort
 from flask import request as fl_req
-from flask_cors import CORS, cross_origin
-from flask_pymongo import PyMongo, ObjectId
+from flask_pymongo import ObjectId
 from pymongo import MongoClient
-import datetime
+from datetime import datetime
 
 app = Flask(__name__)
-
-
-#Enabling MONGO DB
-# app.config['MONGO_URI'] = 'mongodb://localhost:27017/doorwaytechnical'
-# mongo = PyMongo(app)
 
 client = MongoClient('localhost', 27017)
 
 db = client.doorwaytechnical
 scores = db.scoreboard
 
-#Enable CORS
-logging.getLogger('flask_cors').level = logging.DEBUG
-
-CORS(app)
-
-#Mount DB
-# db = mongo.db.scores
 
 #TMDB URLs and API KEY
 api_key_3 = "e7563e8a3f845a7df7b8e492c489c0c2"
 #Base query URL limits by English lang, sorts by popularity, has over 50 ratings, and a 7 or better for average rating.
-#In testing this can produce reliably recognizable movies
+#In testing this can produce reliably recognizable movies.
 base_query_url = "https://api.themoviedb.org/3/discover/movie?api_key=" + api_key_3 + "&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&vote_count.gte=50&vote_average.gte=7"
+#Used for finding actors and films they're known for.
 base_person_url = "https://api.themoviedb.org/3/person/popular?api_key=" +api_key_3 + "&language=en-US"
+#Used for actor film credits.
 base_credits_url = "https://api.themoviedb.org/3/person/"
-
-#MOVIE CHECK TEST VARS
-# mid = 712
-# pid = 141354
-# fid = 713
-
-#NEW GAME CHECK TEST
+#Used for finding movie credits.
+base_movie_url = "https://api.themoviedb.org/3/movie/"
 
 #Hard mode decides whether the movies and actors must be from the same era
-hard = True
+hard = False
 
 #Beginning new Game
-@app.route("/start", methods = ['GET', 'POST'])
+@app.route("/api/start", methods = ['GET', 'POST'])
 def newGame():
     if fl_req.method == 'POST':
-        #Get incoming name
-        # req = fl_req.get_json()
         result = scores.insert_one({
             'name': fl_req.json['name'],
+            'mode': fl_req.json['mode'],
             'score': 0,
-            # 'start_time': datetime.datetime.now()
+            'start_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
         return jsonify({'gid' : str(result.inserted_id), 'score': 0})
     elif fl_req.method == 'GET':
-        top_scores = list(scores.find().sort("score", -1).limit(10))
+        top_scores = list(scores.find({'mode': fl_req.args.get('mode')}).sort("score", -1).limit(10))
         ret = [{'name': score['name'], 'score': score['score']} for score in top_scores]
-        #'gid': str(score['_id'])
         return(jsonify(ret))
 
 
-
-@app.route("/movies", methods = ['GET'])
-# @cross_origin(origin='localhost',headers=['Content- Type','Authorization'])
+#Getting a random movie based off of difficulty mode, then return score.
+@app.route("/api/movies", methods = ['GET'])
 def randomMovie():
     #We get a list of popular actors. We get a movie they're known for. We can then choose to present this, or pick other random film.
     #Decide if we should present true movie or not, extremely small chance that a random movie has the actor in it.
+    mode = fl_req.args.get('mode')
+    if mode == 'Easy':
+        hard = False
+    else:
+        hard = True
     true_movie = bool(random.getrandbits(1))
-    #Create ssl context and get list of all actors by popularity
     ssl._create_default_https_context = ssl._create_unverified_context
-    # conn = request.urlopen(base_person_url)
-    # json_ppl = dict(json.loads(conn.read()))
-    # total_ppl_pages = json_ppl['total_pages']
-    #Pick random page from top quarter of results
+    #Pick a random page from the top 10 pages of popular actors.
     conn = request.urlopen(base_person_url + "&page=" + str(random.randrange(1, 10)))
     json_ppl = json.loads(conn.read())
-    #pick random person from the page
+    #Pick random person from the page.
     people = json_ppl['results']
     person = people[random.randrange(0, len(people))]
-    #Stash known-for list
-    known_for = list(person['known_for'])
-
-
+    #Stash known-for list only gets 3 films, so a somewhat small list.
+    if(not hard):
+        known_for = list(person['known_for'])
+        #Appropriate will contain list of exclusively non-'adult' MOVIES as tagged by TMDB.
+        appropriate = []
+        for item in known_for:
+            result = dict(item)
+            if ((result.get('media_type') == 'movie') and (not result.get('adult')) or (result.get('adult') is None)):
+                appropriate.append(result)
+    #Hard mode so we shall pick from the top 10 actor credits.
+    else:
+        pid = person['id']
+        conn = request.urlopen(base_credits_url + str(pid) + "/movie_credits?api_key=" + api_key_3 + "&language=en-US")
+        json_credits = json.loads(conn.read())
+        credits = list(json_credits['cast'])
+        #Slice top 10 credits, or top n credits if less than 10.
+        if(len(credits) < 10):
+            known_for = credits[0:len(credits)]
+        else:
+            known_for = credits[0:10]
+        #Appropriate will contain a list of movies that haven't been tagged as 'adult' by TMDB.
+        #Not checking for media_type since query automatically elminates this.
+        appropriate = []
+        for item in known_for:
+            result = dict(item)
+            if ((not result.get('adult')) or (result.get('adult') is None)):
+                appropriate.append(result)
+    #If we previously chose an adult actor or only tv actor
+    if(len(appropriate) == 0):
+        randomMovie()
+    #If we have chosen to present a correct pairing
     if(true_movie):
-        # known_for = list(person['known_for'])
-        result = dict(known_for[random.randrange(0, len(known_for))])
+        print(True)
         title = result.get('title')
         poster = result.get('poster_path')
         release = result.get('release_date')
-        # while not title:
-        #     result = dict(known_for[random.randrange(0, len(known_for))])
     
-
+    #If we have chosen to present a false pairing, find a random popular movie.
     if(not true_movie):
+        print(False)
+        #Hard mode decides whether the movies and actors must be from the same era.
+        #May be thrown off if re-releases of films being more popular on db.
         if hard:
-            min = 10000
-            max = 0
-            for i in range(0, len(known_for)):
-                movie = dict(known_for[i])
-                release = movie.get('release_date')
-                if release:
-                    rel_int = int(release[0:4])
-                    if rel_int < min:
-                        min = rel_int
-                    if rel_int > max:
-                        max = rel_int
-            # Handle for up and coming actors
-            if min == max:
-                min -= 5
-                max += 5
             #Handle if not known for anything
-            if len(known_for) == 0:
-                min = 1970
-                max = 2023
+            if len(appropriate) == 0:
+                minimum = 1970
+                maximum = datetime.now().year
+            else:
+                #Hard mode we will select a film released or re-released between the year range of actor credits.
+                rel_range = []
+                for i in range(0, len(appropriate)):
+                    movie = dict(appropriate[i])
+                    release = movie.get('release_date')
+                    #Some films do not have a release date parameter.
+                    if release:
+                        #Slicing just the year from date.
+                        rel_int = int(release[0:4])
+                        rel_range.append(rel_int)
+                #Provided we have some release dates.
+                if len(rel_range) != 0:
+                    minimum = min(rel_range)
+                    maximum = max(rel_range)
+                    # Handle for up and coming actors
+                    if minimum == maximum:
+                        minimum -= 5
+                        maximum += 5
+                #If every date on the appropriate films are screwed up. 
+                else:
+                    minimum = 1970
+                    maximum = datetime.now().year
             
-            if min == 10000 and max == 0:
-                min = 1970
-                max = 2023
-            
-            #Randomize year between range of release dates for best known films of the actor
-            year = "&year=" + str(random.randrange(min, max, 1))
+            #Randomize year between range of release dates for best known films of the actor.
+            year = "&year=" + str(random.randrange(minimum, maximum, 1))
+        #Easy mode
         else:
-            #Randomize year between 1970 and 2023 *&year=* tag doesn't quite work due to re-releases, but better than nothing.
-            year = "&year=" + str(random.randrange(1970, 2023, 1))
-
-        #Get first request to determine number of pages
-        # conn = request.urlopen(base_query_url + year)
-        # json_data = dict(json.loads(conn.read()))
-        # total_pages = json_data['total_pages']
-        #Get new request from a random page in the first quarter of pages, therefore only one fairly popular
-        conn = request.urlopen(base_query_url + '&page=' + str(random.randrange(1, 10)) + year)
+            #Randomize year between 1970 and 2023.
+            year = "&year=" + str(random.randrange(1970, datetime.now().year, 1))
+        #Find film from random page in first 5 pages of results released or re-released at the determined year.
+        conn = request.urlopen(base_query_url + '&page=' + str(random.randrange(1, 5)) + year)
         json_data = dict(json.loads(conn.read()))
         #Gather all results
         results = json_data['results']
-        #Pick a random result
-        result = results[random.randrange(0, len(results))]
+        #Pick a random result from page if we have more than one.
+        if (len(results) > 0):
+            result = results[random.randrange(0, len(results))]
+        else:
+            result = results[0]
+        #Gather the needed data.
         title = result.get('title')
         poster = result.get('poster_path')
         release = result.get('release_date')
-        
-    return jsonify({"answer": true_movie, "pid": person['id'], "name": person['name'], "profile": person['profile_path'], "mid": result['id'], "title": title, "poster": poster, "release": release})
+    # if(title == None or poster == None or release == None):
+    #     print('UNDEF ELEMENT')
+    #     randomMovie()
+    #     #Must return something to not raise error.
+    #     abort(899, 'Empty fetch trying again.')
+    # else:
+    #     print('NORMAL')
+    return jsonify({"pid": person['id'], "name": person['name'], "profile": person['profile_path'], "mid": result['id'], "title": title, "poster": poster, "release": release})
 
 
-
-@app.route("/answer", methods = ['POST'])
-# @cross_origin(origin='localhost',headers=['Content- Type','Authorization'])
-# @cross_origin()
+@app.route("/api/answer", methods = ['POST', 'OPTIONS'])
 def answer():
-    #Find current game
+    #For finding current game
     gid = fl_req.json['gid']
     #Check if we can submit an answer to this game ID.
-    # last_update = scores.find_one({'_id': ObjectId(gid)})['start_time']
-    # if(not datetime.datetime.now() > last_update):
-    # #To keep track if point has been awarded
-    point = False
-    ans = fl_req.json['ans']
-    # if ans == 'yes':
-    #     ans = True
-    # else:
-    #     ans = False
-    print(ans)
-    pid = fl_req.json['pid']
-    mid = fl_req.json['mid']
-    # print(pid)
-    ssl._create_default_https_context = ssl._create_unverified_context
-    conn = request.urlopen(base_credits_url + str(pid) + "/movie_credits?api_key=" + api_key_3 + "&language=en-US")
-    json_credits = dict(json.loads(conn.read()))
-    filter = {'_id': ObjectId(gid)}
-    new_score = {"$inc": {'score': 1}}
-    #Go through credited films and check for match.
-    credits = list(json_credits['cast'])
-    for credit in credits:
-        movie_id = credit['id']
-        #If we find the film in credits and they answer YES
-        if mid == movie_id and ans == "yes":
-            print('movieFound')
+    last_update = datetime.strptime(scores.find_one({'_id': ObjectId(gid)})['start_time'], '%Y-%m-%d %H:%M:%S')
+    time_diff = (datetime.now() - last_update).total_seconds()
+    if(time_diff < 60):
+        #To keep track if point has been awarded and if actor is found in cast
+        found = False
+        point = False
+        #Judging data.
+        ans = fl_req.json['ans']
+        pid = fl_req.json['pid']
+        mid = fl_req.json['mid']
+        #Find credits for the given film.
+        ssl._create_default_https_context = ssl._create_unverified_context
+        conn = request.urlopen(base_movie_url + str(mid) + "/credits?api_key=" + api_key_3 + "&language=en-US")
+        json_credits = dict(json.loads(conn.read()))
+        #Filter to get current game ID.
+        filter = {'_id': ObjectId(gid)}
+        #Increment argument for mongodb.
+        new_score = {"$inc": {'score': 1}}
+        #Go through credited films and check for match.
+        credits = list(json_credits['cast'])
+        for actor in credits:
+            actor_id = actor['id']
+            #If we find the film in credits.
+            if pid == actor_id:
+                found = True
+                break
+        #Assign point if match between answer and found. Returning point_given so we can redirect on false answer.
+        if ((ans == 'no' and not found) or (ans == 'yes' and found)):
             scores.update_one(filter, new_score)
+            game = scores.find_one({'_id': ObjectId(gid)})
             point = True
-    # if not ans and not point:
-    if (ans == 'no' and not point):
-        print('nomatchhh')
-        scores.update_one(filter, new_score)
-        # point = 'yes'
-        print('SCORE!')
-    #Find game now that point has been awarded.
-    game = scores.find_one({'_id': ObjectId(gid)})
-    print(game['score'] )
-    return jsonify({'gid': gid, 'name': game['name'], 'score': game['score']})
-    # else:
-    #     abort(500, description = "Answer for game {gid} submitted after allotted time.")
-    #EROR WITH FALSE!!! AND ERROR WITH DATETIMETHINGS
+            return jsonify({'gid': gid, 'name': game['name'], 'score': game['score'], 'point_given': point})
+        #Default return no point. Returning point_given so we can redirect on false answer.
+        game = scores.find_one({'_id': ObjectId(gid)})
+        return jsonify({'gid': gid, 'name': game['name'], 'score': game['score'], 'point_given': point})
+    #Abort since time has expired and answer can't be submitted.
+    else:
+        abort(501, "Attempted answer after allowed time")
 
-
-
-
-@app.route("/score", methods = ['GET'])
+#Get score for given gid
+@app.route("/api/score", methods = ['GET'])
 def giveScore():
-    args = fl_req.args
-    gid = args.get('gid')
+    gid = fl_req.args.get('gid')
     game = scores.find_one({'_id': ObjectId(gid)})
-    return jsonify({'gid': gid, 'name': game['name'], 'score': game['score']})
+    return jsonify({'gid': gid, 'name': game['name'], 'score': game['score'], 'mode': game['mode']})
 
 
 

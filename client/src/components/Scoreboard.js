@@ -1,35 +1,45 @@
-import React, { useState, useEffect } from "react";
-import { Container, Table, TableCell, TableHead, TableHeader, TableRow } from "./Styles";
-// import {redirect, useNavigate} from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Container, FinalScore, Table, TableCell, TableHead, TableHeader, TableRow } from "./Styles";
 
 export default function Scoreboard(){
 
     const[scores, setScores] = useState([]);
-    // const[gid, setGID] = useState(0)
-    // let navigate = useNavigate();
+    const[mode, setMode] = useState('Easy');
+    const[stable, setStable] = useState(false);
+    const scoreFetchedRef = useRef(false);
 
-    // const GidContext = createContext();
-
+    //Use to fetch scoreboard once
     useEffect(() => {
-        scoreBoard();
-    }, []);
+        if (scoreFetchedRef.current) return;
+        scoreFetchedRef.current = true;
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.get('mode') !== null){
+            setMode(urlParams.get('mode'));
+        }
+        setStable(true);
+    }, [])
+    
 
-    const scoreBoard = () => {
-        fetch('http://localhost:5000/start')
-        .then((res) => res.json())
-        .then((data) => {
-            console.log(data)
-            setScores(data)
-        })
-        .catch((err) => console.log(err))
-
-        
-    }
+    //Secondary useffect needed to set state dependency for mode
+    useEffect(() => {
+        if(stable){
+            fetch('/api/start?' + new URLSearchParams({
+                mode: mode,
+            }),)
+            .then((res) => res.json())
+            .then((data) => {
+                setScores(data)
+            })
+            .catch((err) => console.log(err))
+        }
+    }, [stable, mode])
 
     return (
 
         <>
         <Container>
+            <FinalScore>{mode} Mode:</FinalScore>
+            <br/>
             <Table className = "scoreboard">
                 <TableHead>
                     <TableRow>
