@@ -17,8 +17,8 @@ db = client.doorwaytechnical
 scores = db.scoreboard
 
 
-#TMDB URLs and API KEY
-api_key_3 = "e7563e8a3f845a7df7b8e492c489c0c2"
+#TMDB URLs and __YOUR__ API KEY
+api_key_3 = "_PUT KEY__"
 #Base query URL limits by English lang, sorts by popularity, has over 50 ratings, and a 7 or better for average rating.
 #In testing this can produce reliably recognizable movies.
 base_query_url = "https://api.themoviedb.org/3/discover/movie?api_key=" + api_key_3 + "&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&vote_count.gte=50&vote_average.gte=7"
